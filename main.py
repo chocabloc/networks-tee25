@@ -12,7 +12,7 @@ sim.run()
 """
 
 # run the new model
-graph = og.create(num_nodes=1000, directed=True, graph_params=(4, 0.04), alpha=0.3, eta=0.2, delta=0.4, trust=0, seed=42)
+graph = og.create(num_nodes=100, directed=True, graph_params=(6, 0.04), alpha=0.3, eta=0.2, delta=0.4, trust=0, seed=42)
 model = NewModel()
 sim = Simulation(graph, model, steps=1000)
 sim.run(display_nth=0)

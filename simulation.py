@@ -16,7 +16,7 @@ class Simulation:
             self.graph = self.model.step(self.graph)
 
             # calculate some metrics
-            nextn, nextp, total, totalp, totaln = 0, 0, 0, 0, 0
+            nextn, nextp, total, totalp, totaln, pn, nn = 0, 0, 0, 0, 0, 0, 0
             for j in self.graph.nodes():
                 op = self.graph.nodes[j]['opinion']
                 if op <= -0.75:
@@ -26,11 +26,13 @@ class Simulation:
                 total += op
                 if op < 0:
                     totaln += op
+                    nn += 1
                 else:
+                    pn += 1
                     totalp += op
             total /= self.graph.number_of_nodes()
-            totalp /= self.graph.number_of_nodes()
-            totaln /= self.graph.number_of_nodes()
+            totalp /= pn
+            totaln /= nn
             extn.append(nextn)
             extp.append(nextp)
             avg.append(total)
@@ -47,6 +49,8 @@ class Simulation:
         plt.plot(pavg)
         plt.plot(navg)
         plt.show()
+        # plt.plot(avg)
+        # plt.show()
         self.show_metrics()
 
     def show_metrics(self):
