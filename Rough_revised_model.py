@@ -36,6 +36,7 @@ def opinew(G):
             total_delta += trust_ij * (feedback - o_i)
         new_opinions[i] = o_i + alpha_i * total_delta
     return new_opinions
+
 def update_opinions(G, new_opinions):
     for i in G.nodes():
         G.nodes[i]['opinion'] = np.clip(new_opinions[i], -1, 1)
