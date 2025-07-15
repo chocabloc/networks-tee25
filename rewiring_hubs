@@ -1,0 +1,150 @@
+#Reconnection with hubs
+import networkx as nx
+import numpy as np
+import matplotlib.pyplot as plt
+import scipy as sp
+import matplotlib.pyplot as plt
+
+#Problems: its not accounting for negative trust. (opinion update?)
+# and it doesnt have a feedback mechanism for trust updates.
+
+num_nodes = 100
+p = 0.05          
+k = 4      
+d = 0.5         
+steps = 100
+alpha = 0.2
+eta = 0.2
+
+def initialize_graph(seed=None):
+    if seed is not None:
+        np.random.seed(seed)  #  for reproducibility
+    G = nx.DiGraph(nx.connected_watts_strogatz_graph(num_nodes, k, p))
+    for node in G.nodes():
+        G.nodes[node]['opinion'] = np.random.uniform(-1, 1)
+        G.nodes[node]['agreeableness'] = np.random.uniform(0.2,0.8)  # use variable
+        G.nodes[node]['loyalty'] = np.random.uniform(0.1, 0.9)
+        G.nodes[node]['tolerance'] = np.random.uniform(0.1, 0.7)
+    for u, v in G.edges():
+        G[u][v]['trust'] = np.random.uniform(0.1, 0.8)
+    return G
+
+def opinew(G):
+    new_opinions = {}
+    for i in G.nodes():
+        o_i = G.nodes[i]['opinion']
+        alpha_i = G.nodes[i]['agreeableness']
+        d= G.nodes[i]['tolerance']
+        delta = 0
+        for j in G.successors(i):  # i → j (i listens to j)
+            o_j = G.nodes[j]['opinion']
+            t_ij = G[i][j]['trust']
+            diff = abs(o_i - o_j)
+            feedback = o_j if diff <= d else -o_j
+            delta += t_ij * (feedback - o_i)
+        new_opinions[i] = o_i + alpha_i * delta
+    return new_opinions
+
+def update_opinions(G, new_opinions):
+    for i in G.nodes():
+        G.nodes[i]['opinion'] = np.clip(new_opinions[i], -1, 1)
+
+
+def update_trust(G):
+    for i in G.nodes():
+        o_i = G.nodes[i]['opinion']
+        eta_i = G.nodes[i]['loyalty']
+        for j in G.successors(i):
+            o_j = G.nodes[j]['opinion']
+            sim = 1 - abs(o_i - o_j)
+            t_old = G[i][j]['trust']
+            G[i][j]['trust'] = np.clip(t_old + eta_i * (sim - t_old), 0, 1)
+
+#influence as simple sigma of all trusts
+def compute_influence(G):
+    return {
+        j: sum(G[u][j]['trust'] for u in G.predecessors(j))
+        for j in G.nodes()
+    }
+
+#rewiring random edge using softmax
+def rewire_random_edge(G, beta=0.5):
+    edges = list(G.edges())
+    
+    u, v = edges[np.random.randint(len(edges))] 
+    G.remove_edge(u, v) #randomlyremoves and edge
+
+    infl = compute_influence(G)
+    options = [j for j in G.nodes() if j != u and not G.has_edge(u, j)]
+    if not options:
+        return
+
+    scores = np.array([infl[j] for j in options])
+    probs = np.exp(beta * scores)
+    probs = probs/np.sum(probs) #normalising the array using softmax
+    new_v = np.random.choice(options, p=probs)
+
+    G.add_edge(u, new_v)
+    G[u][new_v]['trust'] = np.random.uniform(0.1, 0.8)
+
+def plot_opinions(G, step):
+    opinions = [G.nodes[i]['opinion'] for i in G.nodes()]
+    plt.hist(opinions, bins=40, range=(-1, 1), color='skyblue')
+    plt.title(f"Opinion Distribution at Step {step}. Standard deviation = {np.std(opinions[1:98]):.2f}")
+    plt.xlabel("Opinion")
+    plt.ylabel("Frequency")
+    plt.show()
+
+def draw_opinion_heatmap(G):
+    opinions = np.array([G.nodes[n]['opinion'] for n in G.nodes()])
+    normed = (opinions + 1) / 2  
+    pos = nx.spring_layout(G, seed=42)
+
+    plt.figure(figsize=(8, 6))
+    nodes = nx.draw_networkx_nodes(
+        G, pos,
+        node_color=normed,
+        cmap='coolwarm',
+        node_size=30
+    )
+    nx.draw_networkx_edges(G, pos, edge_color='gray', alpha=0.3)
+    
+    sm = plt.cm.ScalarMappable(cmap='coolwarm', norm=plt.Normalize(vmin=-1, vmax=1))
+    sm.set_array([])
+    cbar = plt.colorbar(sm, ax=plt.gca())
+    cbar.set_label('Opinion')
+    
+    plt.axis('off')
+    plt.title("Opinion Heatmap")
+    plt.show()
+
+
+G = initialize_graph(seed=42)
+plot_opinions(G, step=0)  
+draw_opinion_heatmap(G)
+
+for t in range(steps):
+    new_opinions = opinew(G)
+    update_trust(G)
+    update_opinions(G, new_opinions)
+    rewire_random_edge(G, beta=1.0)
+    if t%10==0 or t==steps - 1:
+        plot_opinions(G, step=t)
+        draw_opinion_heatmap(G)
+
+#looking at hubs etc
+def get_top5_hubs(G):
+    return [n for n, _ in sorted(G.in_degree(), key=lambda x: x[1], reverse=True)[:5]]
+
+hubs = get_top5_hubs(G)
+
+def compare_attribute(G, hubs, attr):
+    all_vals = [G.nodes[n][attr] for n in G.nodes()]
+    hub_vals = [G.nodes[n][attr] for n in hubs]
+    return {
+        "all_mean": np.mean(all_vals),
+        "hub_mean": np.mean(hub_vals)
+    }
+result = compare_attribute(G, hubs, 'loyalty')
+print("  All nodes:", result["all_mean"])
+print("  Hubs     :", result["hub_mean"])
