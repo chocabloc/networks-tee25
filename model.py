@@ -59,7 +59,7 @@ class NewModel(Model):
             for j in g.neighbors(i):
                 o_j, trust = g.nodes[j]['opinion'], g[i][j]['trust']
                 op_diff = o_j - o_i
-                feedback = 1 if abs(op_diff) <= delta_i else -1
+                feedback = 1 if abs(op_diff) <= delta_i else 0
                 scale = alpha_i*trust*feedback
                 op_shift += scale*op_diff
 
