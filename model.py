@@ -53,7 +53,7 @@ class NewModel(Model):
         # loop through all nodes
         for i in g.nodes():
             alpha_i, delta_i = g.nodes[i]['alpha'], g.nodes[i]['delta']
-            o_i, op_shift = g.nodes[i]['opinion'], 0
+            o_i, op_shift, total_scale = g.nodes[i]['opinion'], 0, 0
 
             # sum up contributions from all neighbours to calculate shift in opinion
             for j in g.neighbors(i):
@@ -62,6 +62,8 @@ class NewModel(Model):
                 feedback = 1 if abs(op_diff) <= delta_i else 0
                 scale = alpha_i*trust*feedback
                 op_shift += scale*op_diff
+                total_scale += 1
+            op_shift /= total_scale
 
             # finally, update the opinion
             newg.nodes[i]['opinion'] = np.clip(o_i + op_shift, -1, 1)  

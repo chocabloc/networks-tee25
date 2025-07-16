@@ -2,7 +2,7 @@ import networkx as nx
 import numpy as np
 import matplotlib.pyplot as plt
 
-def create(num_nodes, directed=False, graph_params=(4, 0.5), alpha=0.3, eta=0.2, delta=0.3, trust=None, seed=None):
+def create(num_nodes, directed=False, graph_params=(4, 0.2), alpha=0.3, eta=0.2, delta=0.3, trust=None, seed=None):
     # for reproducability
     if seed is not None:
         np.random.seed(seed)
